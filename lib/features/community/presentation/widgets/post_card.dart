@@ -1,26 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:dawsha_app/core/constants/app_constants.dart';
+import 'package:dawsha_app/data/models/post_model.dart';
 
 class PostCard extends StatelessWidget {
-  final String userName;
-  final String userAvatar;
+  final PostModel post;
+  final VoidCallback? onLike;
+  final VoidCallback? onComment;
   final String timeAgo;
-  final String distance;
-  final String duration;
-  final String pace;
-  final int likes;
-  final int comments;
 
   const PostCard({
     super.key,
-    required this.userName,
-    required this.userAvatar,
+    required this.post,
     required this.timeAgo,
-    required this.distance,
-    required this.duration,
-    required this.pace,
-    required this.likes,
-    required this.comments,
+    this.onLike,
+    this.onComment,
   });
 
   @override
@@ -42,7 +35,7 @@ class PostCard extends StatelessWidget {
           Row(
             children: [
               CircleAvatar(
-                backgroundImage: NetworkImage(userAvatar),
+                backgroundImage: NetworkImage(post.userAvatar ?? 'https://i.pravatar.cc/150'),
                 radius: 20,
               ),
               const SizedBox(width: 12),
@@ -50,7 +43,7 @@ class PostCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(post.userName ?? 'عداء دوشة', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     Text(timeAgo, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                   ],
                 ),
@@ -63,7 +56,9 @@ class PostCard extends StatelessWidget {
           ),
           
           const SizedBox(height: 16),
-          const Text('أنهيت جولة جري رائعة في زايد! الجو كان ممتازاً 🏃‍♂️💨', style: TextStyle(fontSize: 14)),
+          if (post.caption != null) 
+            Text(post.caption!, style: const TextStyle(fontSize: 14)),
+          
           const SizedBox(height: 16),
 
           // Run Stats Container
@@ -77,11 +72,11 @@ class PostCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStat('المسافة', distance),
+                _buildStat('المسافة', '${post.distanceKm} كم'),
                 Container(width: 1, height: 30, color: Colors.grey.withOpacity(0.3)),
-                _buildStat('الوقت', duration),
+                _buildStat('الوقت', '${post.durationMinutes} دقيقة'),
                 Container(width: 1, height: 30, color: Colors.grey.withOpacity(0.3)),
-                _buildStat('السرعة', pace),
+                _buildStat('السرعة', post.pace),
               ],
             ),
           ),
@@ -92,11 +87,21 @@ class PostCard extends StatelessWidget {
           // Action Buttons
           Row(
             children: [
-              _buildActionButton(Icons.favorite_border, '$likes إعجاب', () {}),
+              _buildActionButton(
+                post.isLikedByMe ? Icons.favorite : Icons.favorite_border, 
+                '${post.likesCount} إعجاب', 
+                post.isLikedByMe ? Colors.red : AppColors.textSecondary,
+                onLike ?? () {}
+              ),
               const SizedBox(width: 24),
-              _buildActionButton(Icons.chat_bubble_outline, '$comments تعليق', () {}),
+              _buildActionButton(
+                Icons.chat_bubble_outline, 
+                '${post.commentsCount} تعليق', 
+                AppColors.textSecondary,
+                onComment ?? () {}
+              ),
               const Spacer(),
-              _buildActionButton(Icons.share_outlined, 'مشاركة', () {}),
+              _buildActionButton(Icons.share_outlined, 'مشاركة', AppColors.textSecondary, () {}),
             ],
           ),
         ],
@@ -113,16 +118,16 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap) {
+  Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: AppColors.textSecondary),
+            Icon(icon, size: 20, color: color),
             const SizedBox(width: 6),
-            Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+            Text(label, style: TextStyle(color: color, fontSize: 14)),
           ],
         ),
       ),

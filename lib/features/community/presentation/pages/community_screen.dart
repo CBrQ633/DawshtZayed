@@ -6,6 +6,7 @@ import 'package:dawsha_app/features/community/presentation/widgets/event_card.da
 import 'package:dawsha_app/data/repositories/event_repository.dart';
 import 'package:dawsha_app/data/repositories/post_repository.dart';
 import 'package:dawsha_app/data/repositories/challenge_repository.dart';
+import 'package:dawsha_app/data/repositories/auth_repository.dart';
 import 'package:dawsha_app/features/community/presentation/widgets/challenge_card.dart';
 import 'package:dawsha_app/features/profile/presentation/pages/leaderboard_screen.dart';
 import 'package:dawsha_app/data/models/challenge_model.dart';
@@ -42,7 +43,7 @@ class CommunityScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            _buildFeedTab(postsAsync),
+            _buildFeedTab(postsAsync, ref),
             _buildEventsTab(eventsAsync),
             _buildChallengesTab(ref),
             const LeaderboardScreen(),
@@ -52,7 +53,9 @@ class CommunityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFeedTab(AsyncValue postsAsync) {
+  Widget _buildFeedTab(AsyncValue postsAsync, WidgetRef ref) {
+    final user = ref.watch(authStateProvider).value?.session?.user;
+
     return postsAsync.when(
       data: (posts) => ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -60,14 +63,26 @@ class CommunityScreen extends ConsumerWidget {
         itemBuilder: (context, index) {
           final post = posts[index];
           return PostCard(
-            userName: post.userName ?? 'عداء دوشة',
-            userAvatar: post.userAvatar ?? 'https://i.pravatar.cc/150',
+            post: post,
             timeAgo: _formatTimeAgo(post.createdAt),
-            distance: '${post.distanceKm} كم',
-            duration: '${post.durationMinutes} دقيقة',
-            pace: post.pace,
-            likes: post.likesCount,
-            comments: post.commentsCount,
+            onLike: () async {
+              if (user == null) return;
+              
+              final success = await ref.read(postRepositoryProvider).toggleLike(
+                post.id, 
+                user.id, 
+                post.isLikedByMe
+              );
+              
+              if (success) {
+                ref.invalidate(postsProvider);
+              }
+            },
+            onComment: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('قريباً: إضافة التعليقات!')),
+              );
+            },
           );
         },
       ),

@@ -13,6 +13,7 @@ class PostModel {
   final DateTime createdAt;
   final String? userName; // From profiles join
   final String? userAvatar; // From profiles join
+  final bool isLikedByMe;
 
   PostModel({
     required this.id,
@@ -29,6 +30,7 @@ class PostModel {
     required this.createdAt,
     this.userName,
     this.userAvatar,
+    this.isLikedByMe = false,
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
@@ -49,6 +51,7 @@ class PostModel {
           : DateTime.now(),
       userName: json['profiles']?['name'],
       userAvatar: json['profiles']?['avatar_url'],
+      isLikedByMe: json['is_liked_by_me'] ?? false,
     );
   }
 

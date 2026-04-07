@@ -3,6 +3,8 @@
 -- ==============================================================================
 
 -- ⚠️ Warning: This will delete existing tables and data for a clean start!
+DROP TABLE IF EXISTS public.post_comments CASCADE;
+DROP TABLE IF EXISTS public.post_likes CASCADE;
 DROP TABLE IF EXISTS public.challenge_participants CASCADE;
 DROP TABLE IF EXISTS public.activities CASCADE;
 DROP TABLE IF EXISTS public.challenges CASCADE;
@@ -83,6 +85,34 @@ ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Posts are viewable by everyone." ON posts FOR SELECT USING (true);
 CREATE POLICY "Users can insert their own posts." ON posts FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own posts." ON posts FOR DELETE USING (auth.uid() = user_id);
+
+-- 4.1 Post Likes Table
+CREATE TABLE public.post_likes (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(post_id, user_id)
+);
+
+ALTER TABLE public.post_likes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Likes viewable by everyone" ON post_likes FOR SELECT USING (true);
+CREATE POLICY "Users can like posts" ON post_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can unlike posts" ON post_likes FOR DELETE USING (auth.uid() = user_id);
+
+-- 4.2 Post Comments Table
+CREATE TABLE public.post_comments (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    post_id UUID REFERENCES public.posts(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Comments viewable by everyone" ON post_comments FOR SELECT USING (true);
+CREATE POLICY "Users can comment on posts" ON post_comments FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own comments" ON post_comments FOR DELETE USING (auth.uid() = user_id);
 
 -- 4. Store Items (Marketplace Goods)
 CREATE TABLE public.store_items (
@@ -250,6 +280,39 @@ DROP TRIGGER IF EXISTS tr_on_activity_saved ON public.activities;
 CREATE TRIGGER tr_on_activity_saved
 AFTER INSERT ON public.activities
 FOR EACH ROW EXECUTE PROCEDURE public.fn_on_activity_saved();
+
+-- 12. Social Interaction Triggers: تحديث أرقام اللايكات والتعليقات تلقائياً
+CREATE OR REPLACE FUNCTION public.fn_on_post_interaction()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        IF (TG_TABLE_NAME = 'post_likes') THEN
+            UPDATE public.posts SET likes_count = likes_count + 1 WHERE id = NEW.post_id;
+        ELSIF (TG_TABLE_NAME = 'post_comments') THEN
+            UPDATE public.posts SET comments_count = comments_count + 1 WHERE id = NEW.post_id;
+        END IF;
+    ELSIF (TG_OP = 'DELETE') THEN
+        IF (TG_TABLE_NAME = 'post_likes') THEN
+            UPDATE public.posts SET likes_count = likes_count - 1 WHERE id = OLD.post_id;
+        ELSIF (TG_TABLE_NAME = 'post_comments') THEN
+            UPDATE public.posts SET comments_count = comments_count - 1 WHERE id = OLD.post_id;
+        END IF;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Likes Triggers
+DROP TRIGGER IF EXISTS tr_after_like_insert ON public.post_likes;
+CREATE TRIGGER tr_after_like_insert AFTER INSERT ON public.post_likes FOR EACH ROW EXECUTE PROCEDURE public.fn_on_post_interaction();
+DROP TRIGGER IF EXISTS tr_after_like_delete ON public.post_likes;
+CREATE TRIGGER tr_after_like_delete AFTER DELETE ON public.post_likes FOR EACH ROW EXECUTE PROCEDURE public.fn_on_post_interaction();
+
+-- Comments Triggers
+DROP TRIGGER IF EXISTS tr_after_comment_insert ON public.post_comments;
+CREATE TRIGGER tr_after_comment_insert AFTER INSERT ON public.post_comments FOR EACH ROW EXECUTE PROCEDURE public.fn_on_post_interaction();
+DROP TRIGGER IF EXISTS tr_after_comment_delete ON public.post_comments;
+CREATE TRIGGER tr_after_comment_delete AFTER DELETE ON public.post_comments FOR EACH ROW EXECUTE PROCEDURE public.fn_on_post_interaction();
 
 -- 11. Store Purchase RPC: عملية شراء آمنة (Atomic Transaction)
 -- تتعامل مع الرصيد، المخزن، وضافة الطلب في خطوة واحدة
