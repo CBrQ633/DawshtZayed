@@ -24,29 +24,18 @@ class StoreRepository {
 
   Future<bool> purchaseItem(String itemId, int price, String userId) async {
     try {
-      // 1. Check user balance first
-      final profileRes = await _supabase.from('profiles').select('coins').eq('id', userId).single();
-      final currentCoins = profileRes['coins'] as int;
-      
-      if (currentCoins < price) return false;
+      final response = await _supabase.rpc(
+        'rpc_purchase_item',
+        params: {
+          'p_item_id': itemId,
+          'p_user_id': userId,
+          'p_price': price,
+        },
+      );
 
-      // 2. Perform purchase (In a real app, use an RPC for atomic transaction)
-      // For now, we'll do sequential updates
-      
-      // Add to orders
-      await _supabase.from('orders').insert({
-        'user_id': userId,
-        'item_id': itemId,
-        'price_paid': price,
-      });
-
-      // Deduct coins
-      await _supabase.from('profiles').update({
-        'coins': currentCoins - price,
-      }).eq('id', userId);
-
-      return true;
+      return response['success'] ?? false;
     } catch (e) {
+      print('Error purchasing item: $e');
       return false;
     }
   }

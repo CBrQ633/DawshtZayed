@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dawsha_app/data/models/profile_model.dart';
@@ -29,6 +30,31 @@ class ProfileRepository {
         .from('profiles')
         .update(profile.toJson())
         .eq('id', profile.id);
+  }
+
+  // Upload avatar to Supabase Storage
+  Future<String?> uploadAvatar(String userId, File imageFile) async {
+    try {
+      final fileName = '$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      
+      // Upload file to 'avatars' bucket
+      await _supabase.storage.from('avatars').upload(
+        fileName,
+        imageFile,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
+
+      // Get public URL
+      final String publicUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
+      
+      // Update profile with new avatar URL
+      await _supabase.from('profiles').update({'avatar_url': publicUrl}).eq('id', userId);
+      
+      return publicUrl;
+    } catch (e) {
+      print('Error uploading avatar: $e');
+      return null;
+    }
   }
 
   // Stream of profile updates

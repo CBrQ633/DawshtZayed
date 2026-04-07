@@ -251,6 +251,51 @@ CREATE TRIGGER tr_on_activity_saved
 AFTER INSERT ON public.activities
 FOR EACH ROW EXECUTE PROCEDURE public.fn_on_activity_saved();
 
+-- 11. Store Purchase RPC: عملية شراء آمنة (Atomic Transaction)
+-- تتعامل مع الرصيد، المخزن، وضافة الطلب في خطوة واحدة
+CREATE OR REPLACE FUNCTION public.rpc_purchase_item(
+    p_item_id UUID,
+    p_user_id UUID,
+    p_price INTEGER
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_coins INTEGER;
+    v_item_stock INTEGER;
+    v_item_name TEXT;
+BEGIN
+    -- 1. التأكد من بيانات المستخدم (مع قفل السطر لمنع تعارض العمليات)
+    SELECT coins INTO v_user_coins FROM public.profiles WHERE id = p_user_id FOR UPDATE;
+    
+    -- 2. التأكد من بيانات المنتج
+    SELECT name, stock INTO v_item_name, v_item_stock FROM public.store_items WHERE id = p_item_id FOR UPDATE;
+
+    -- 3. التحقق من الشروط
+    IF v_user_coins < p_price THEN
+        RETURN jsonb_build_object('success', false, 'message', 'رصيدك غير كافٍ');
+    END IF;
+
+    IF v_item_stock <= 0 THEN
+        RETURN jsonb_build_object('success', false, 'message', 'هذا المنتج نفذ من المخزن');
+    END IF;
+
+    -- 4. تنفيذ العملية (خصم العملات، تقليل المخزن، إضافة الطلب)
+    UPDATE public.profiles SET coins = coins - p_price WHERE id = p_user_id;
+    UPDATE public.store_items SET stock = stock - 1 WHERE id = p_item_id;
+    
+    INSERT INTO public.orders (user_id, item_id, price_paid, status)
+    VALUES (p_user_id, p_item_id, p_price, 'completed');
+
+    RETURN jsonb_build_object(
+        'success', true, 
+        'message', 'تم شراء ' || v_item_name || ' بنجاح',
+        'new_balance', v_user_coins - p_price
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'message', 'حدث خطأ غير متوقع: ' || SQLERRM);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ==============================================================================
 -- 📊 Sample Data for Visuals
 -- ==============================================================================

@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:dawsha_app/core/constants/app_constants.dart';
 import 'package:dawsha_app/data/models/profile_model.dart';
 import 'package:dawsha_app/data/repositories/profile_repository.dart';
@@ -17,6 +19,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _cityController;
   String? _fitnessLevel;
+  File? _imageFile;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -24,6 +28,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _nameController = TextEditingController(text: widget.profile.name);
     _cityController = TextEditingController(text: widget.profile.city);
     _fitnessLevel = widget.profile.fitnessLevel;
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
   }
 
   @override
@@ -48,7 +63,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Name Field
+            // Profile Picture
+            Center(
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundColor: AppColors.surface,
+                    backgroundImage: _imageFile != null 
+                      ? FileImage(_imageFile!) as ImageProvider
+                      : (widget.profile.avatarUrl != null ? NetworkImage(widget.profile.avatarUrl!) : null),
+                    child: (widget.profile.avatarUrl == null && _imageFile == null) 
+                      ? const Icon(Icons.person, size: 60, color: Colors.grey) 
+                      : null,
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryGreen,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            // ... (rest of the fields)
             const Text('الاسم بالكامل', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             TextField(
@@ -102,13 +150,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _saveProfile,
+                onPressed: _isUploading ? null : _saveProfile,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('حفظ التغييرات', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                child: _isUploading 
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('حفظ التغييرات', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -118,23 +168,37 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    final updatedProfile = ProfileModel(
-      id: widget.profile.id,
-      name: _nameController.text.trim(),
-      email: widget.profile.email,
-      city: _cityController.text.trim(),
-      fitnessLevel: _fitnessLevel,
-      avatarUrl: widget.profile.avatarUrl,
-      coins: widget.profile.coins,
-      xp: widget.profile.xp,
-      totalKm: widget.profile.totalKm,
-      streakDays: widget.profile.streakDays,
-      rank: widget.profile.rank,
-    );
+    setState(() => _isUploading = true);
 
     try {
+      String? finalAvatarUrl = widget.profile.avatarUrl;
+
+      // 1. Upload new avatar if selected
+      if (_imageFile != null) {
+        finalAvatarUrl = await ref.read(profileRepositoryProvider).uploadAvatar(
+          widget.profile.id, 
+          _imageFile!
+        );
+      }
+
+      // 2. Update profile details
+      final updatedProfile = ProfileModel(
+        id: widget.profile.id,
+        name: _nameController.text.trim(),
+        email: widget.profile.email,
+        city: _cityController.text.trim(),
+        fitnessLevel: _fitnessLevel,
+        avatarUrl: finalAvatarUrl,
+        coins: widget.profile.coins,
+        xp: widget.profile.xp,
+        totalKm: widget.profile.totalKm,
+        streakDays: widget.profile.streakDays,
+        rank: widget.profile.rank,
+      );
+
       await ref.read(profileRepositoryProvider).updateProfile(updatedProfile);
       ref.invalidate(currentUserProfileProvider);
+      
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -147,6 +211,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SnackBar(content: Text('حدث خطأ أثناء الحفظ.'), backgroundColor: Colors.red),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 }
