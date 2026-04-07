@@ -8,26 +8,10 @@ class ActivityRepository {
 
   ActivityRepository(this._supabase);
 
-  // Save new activity
   Future<void> saveActivity(ActivityModel activity) async {
+    // Activities are now handled by a database trigger (tr_on_activity_saved)
+    // which automatically updates profiles (stats, xp, coins) and challenge progress.
     await _supabase.from('activities').insert(activity.toJson());
-    
-    // Also update profile total metrics
-    final profile = await _supabase.from('profiles').select('total_km, xp, coins').eq('id', activity.userId).single();
-      final currentKm = (profile['total_km'] ?? 0.0) as double;
-      final currentXp = (profile['xp'] ?? 0) as int;
-      final currentCoins = (profile['coins'] ?? 0) as int;
-
-      // Add 10 XP per km and 1 coin per km
-      final newKm = currentKm + activity.distance;
-      final newXp = currentXp + (activity.distance * 10).toInt();
-      final newCoins = currentCoins + (activity.distance).toInt();
-
-      await _supabase.from('profiles').update({
-        'total_km': newKm,
-        'xp': newXp,
-        'coins': newCoins,
-      }).eq('id', activity.userId);
   }
 
   // Get user activities

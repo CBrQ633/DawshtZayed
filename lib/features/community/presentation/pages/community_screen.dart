@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dawsha_app/core/constants/app_constants.dart';
 import 'package:dawsha_app/features/community/presentation/widgets/post_card.dart';
 import 'package:dawsha_app/features/community/presentation/widgets/event_card.dart';
-import 'package:dawsha_app/data/models/event_model.dart';
+import 'package:dawsha_app/data/repositories/event_repository.dart';
+import 'package:dawsha_app/data/repositories/post_repository.dart';
+import 'package:dawsha_app/data/repositories/challenge_repository.dart';
+import 'package:dawsha_app/features/community/presentation/widgets/challenge_card.dart';
+import 'package:dawsha_app/features/profile/presentation/pages/leaderboard_screen.dart';
+import 'package:dawsha_app/data/models/challenge_model.dart';
 
-class CommunityScreen extends StatelessWidget {
+class CommunityScreen extends ConsumerWidget {
   const CommunityScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final postsAsync = ref.watch(postsProvider);
+    final eventsAsync = ref.watch(eventsProvider);
+
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -26,118 +35,96 @@ class CommunityScreen extends StatelessWidget {
             tabs: [
               Tab(text: 'المنشورات'),
               Tab(text: 'الفعاليات'),
+              Tab(text: 'التحديات'),
               Tab(text: 'لوحة الشرف'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
-            _buildFeedTab(),
-            _buildEventsTab(),
-            _buildLeaderboardTab(),
+            _buildFeedTab(postsAsync),
+            _buildEventsTab(eventsAsync),
+            _buildChallengesTab(ref),
+            const LeaderboardScreen(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFeedTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: const [
-        PostCard(
-          userName: 'أحمد علي',
-          userAvatar: 'https://i.pravatar.cc/150?u=ahmed',
-          timeAgo: 'منذ ساعتين',
-          distance: '5.2 كم',
-          duration: '25:40',
-          pace: '4:56',
-          likes: 24,
-          comments: 5,
-        ),
-        PostCard(
-          userName: 'سارة محمد',
-          userAvatar: 'https://i.pravatar.cc/150?u=sara',
-          timeAgo: 'منذ 5 ساعات',
-          distance: '10.0 كم',
-          duration: '55:12',
-          pace: '5:31',
-          likes: 42,
-          comments: 12,
-        ),
-      ],
+  Widget _buildFeedTab(AsyncValue postsAsync) {
+    return postsAsync.when(
+      data: (posts) => ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: posts.length,
+        itemBuilder: (context, index) {
+          final post = posts[index];
+          return PostCard(
+            userName: post.userName ?? 'عداء دوشة',
+            userAvatar: post.userAvatar ?? 'https://i.pravatar.cc/150',
+            timeAgo: _formatTimeAgo(post.createdAt),
+            distance: '${post.distanceKm} كم',
+            duration: '${post.durationMinutes} دقيقة',
+            pace: post.pace,
+            likes: post.likesCount,
+            comments: post.commentsCount,
+          );
+        },
+      ),
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+      error: (err, stack) => Center(child: Text('خطأ في جلب المنشورات: $err')),
     );
   }
 
-  Widget _buildEventsTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: dummyEvents.length,
-      itemBuilder: (context, index) {
-        return EventCard(event: dummyEvents[index]);
-      },
+  Widget _buildEventsTab(AsyncValue eventsAsync) {
+    return eventsAsync.when(
+      data: (events) => ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: events.length,
+        itemBuilder: (context, index) {
+          return EventCard(event: events[index]);
+        },
+      ),
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+      error: (err, stack) => Center(child: Text('خطأ في جلب الفعاليات: $err')),
     );
   }
 
-  Widget _buildLeaderboardTab() {
-    final List<Map<String, dynamic>> leaders = [
-      {'name': 'ياسين محمود', 'distance': '124.5 كم', 'rank': 1, 'avatar': 'https://i.pravatar.cc/150?u=1'},
-      {'name': 'كريم حسن', 'distance': '112.2 كم', 'rank': 2, 'avatar': 'https://i.pravatar.cc/150?u=2'},
-      {'name': 'عبد الرحمن', 'distance': '98.7 كم', 'rank': 3, 'avatar': 'https://i.pravatar.cc/150?u=3'},
-      {'name': 'عمر خالد', 'distance': '85.0 كم', 'rank': 4, 'avatar': 'https://i.pravatar.cc/150?u=4'},
-      {'name': 'يوسف علي', 'distance': '72.3 كم', 'rank': 5, 'avatar': 'https://i.pravatar.cc/150?u=5'},
-    ];
+  String _formatTimeAgo(DateTime dateTime) {
+    final difference = DateTime.now().difference(dateTime);
+    if (difference.inDays > 0) return 'منذ ${difference.inDays} يوم';
+    if (difference.inHours > 0) return 'منذ ${difference.inHours} ساعة';
+    if (difference.inMinutes > 0) return 'منذ ${difference.inMinutes} دقيقة';
+    return 'الآن';
+  }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: leaders.length,
-      itemBuilder: (context, index) {
-        final leader = leaders[index];
-        final bool isTopThree = leader['rank'] <= 3;
+  Widget _buildChallengesTab(WidgetRef ref) {
+    final challengesAsync = ref.watch(activeChallengesProvider);
+    final userChallengesAsync = ref.watch(userChallengesProvider);
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: isTopThree ? Border.all(color: AppColors.primaryGreen.withOpacity(0.5)) : null,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 30,
-                child: Text(
-                  '${leader['rank']}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: isTopThree ? AppColors.primaryGreen : Colors.grey,
-                  ),
-                ),
-              ),
-              CircleAvatar(
-                backgroundImage: NetworkImage(leader['avatar']),
-                radius: 20,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(leader['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const Text('الشيخ زايد', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                  ],
-                ),
-              ),
-              Text(
-                leader['distance'],
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
-              ),
-            ],
-          ),
+    return challengesAsync.when(
+      data: (challenges) {
+        final userParticipations = userChallengesAsync.value ?? [];
+        
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: challenges.length,
+          itemBuilder: (context, index) {
+            final challenge = challenges[index];
+            final participation = userParticipations.firstWhere(
+              (p) => p.challengeId == challenge.id,
+              orElse: () => ChallengeParticipantModel(id: '', challengeId: '', userId: ''),
+            );
+
+            return ChallengeCard(
+              challenge: challenge,
+              participation: participation.id.isNotEmpty ? participation : null,
+            );
+          },
         );
       },
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+      error: (err, stack) => Center(child: Text('خطأ في جلب التحديات: $err')),
     );
   }
 }

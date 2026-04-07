@@ -3,15 +3,18 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dawsha_app/core/constants/app_constants.dart';
 import 'package:dawsha_app/data/models/activity_model.dart';
+import 'package:dawsha_app/data/models/post_model.dart';
+import 'package:dawsha_app/data/repositories/post_repository.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ActivitySummaryScreen extends StatelessWidget {
+class ActivitySummaryScreen extends ConsumerWidget {
   final ActivityModel activity;
 
   const ActivitySummaryScreen({super.key, required this.activity});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     List<LatLng> routePoints = activity.route.map((p) => LatLng(p['lat']!, p['lng']!)).toList();
     
     // Calculate map bounds if route is not empty
@@ -153,14 +156,42 @@ class ActivitySummaryScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        // TODO: Implement Share functionality
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('المشاركة ستتوفر قريباً!')),
+                      onPressed: () async {
+                        final post = PostModel(
+                          id: '', // Supabase will generate
+                          userId: activity.userId,
+                          caption: 'لقد أتممت جرياً مسافته ${activity.distance.toStringAsFixed(2)} كم في زمن قدره ${_formatDuration(activity.duration)}! 🏃‍♂️⚡',
+                          distanceKm: activity.distance,
+                          durationMinutes: activity.duration.inMinutes,
+                          pace: activity.pace.toStringAsFixed(2),
+                          locationTag: 'الشيخ زايد',
+                          createdAt: DateTime.now(),
                         );
+
+                        try {
+                          await ref.read(postRepositoryProvider).createPost(post);
+                          // Refresh community feed
+                          ref.invalidate(postsProvider);
+                          
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('تمت المشاركة في المجتمع بنجاح! 🚀'),
+                                backgroundColor: AppColors.primaryGreen,
+                              ),
+                            );
+                            context.go('/community');
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('حدث خطأ أثناء المشاركة.'), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
                       },
-                      icon: const Icon(Icons.share, color: Colors.white),
-                      label: const Text('مشاركة', style: TextStyle(color: Colors.white)),
+                      icon: const Icon(Icons.share, color: Colors.white, size: 20),
+                      label: const Text('مشاركة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         side: BorderSide(color: AppColors.primarySilver.withValues(alpha: 0.5)),

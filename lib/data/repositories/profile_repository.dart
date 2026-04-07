@@ -39,6 +39,21 @@ class ProfileRepository {
         .eq('id', userId)
         .map((event) => event.isNotEmpty ? ProfileModel.fromJson(event.first) : null);
   }
+
+  // Fetch leaderboard users (ranked by total_km)
+  Future<List<ProfileModel>> getLeaderboard({int limit = 50}) async {
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select()
+          .order('total_km', ascending: false)
+          .limit(limit);
+      
+      return (response as List).map((e) => ProfileModel.fromJson(e)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
 }
 
 // Provider for Profile repository
@@ -56,4 +71,9 @@ final currentUserProfileProvider = FutureProvider<ProfileModel?>((ref) async {
     return ref.watch(profileRepositoryProvider).getProfile(user.id);
   }
   return null;
+});
+
+// Leaderboard provider
+final leaderboardProvider = FutureProvider<List<ProfileModel>>((ref) async {
+  return ref.watch(profileRepositoryProvider).getLeaderboard();
 });

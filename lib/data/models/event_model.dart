@@ -1,23 +1,61 @@
 class EventModel {
   final String id;
   final String title;
+  final String? description;
   final String location;
   final DateTime date;
   final String imageUrl;
   final int participantsCount;
   final String distance;
   final bool isFeatured;
+  final String? difficulty;
+  final String? coachName;
 
   EventModel({
     required this.id,
     required this.title,
+    this.description,
     required this.location,
     required this.date,
     required this.imageUrl,
     this.participantsCount = 0,
     required this.distance,
     this.isFeatured = false,
+    this.difficulty,
+    this.coachName,
   });
+
+  factory EventModel.fromJson(Map<String, dynamic> json) {
+    return EventModel(
+      id: json['id'].toString(),
+      title: json['title'] ?? '',
+      description: json['description'],
+      location: json['location'] ?? '',
+      date: DateTime.tryParse(json['event_date']?.toString() ?? '') ?? DateTime.now(),
+      imageUrl: json['image_url'] ?? '',
+      participantsCount: json['participants_count'] ?? 0,
+      distance: json['distance'] ?? '',
+      isFeatured: json['is_featured'] ?? false,
+      difficulty: json['difficulty'],
+      coachName: json['coach_name'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'location': location,
+      'event_date': date.toIso8601String(),
+      'image_url': imageUrl,
+      'participants_count': participantsCount,
+      'distance': distance,
+      'is_featured': isFeatured,
+      'difficulty': difficulty,
+      'coach_name': coachName,
+    };
+  }
 }
 
 // Dummy Data
@@ -40,14 +78,5 @@ final List<EventModel> dummyEvents = [
     imageUrl: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=1000',
     participantsCount: 120,
     distance: '10KM',
-  ),
-  EventModel(
-    id: '3',
-    title: 'تجمع المحترفين',
-    location: 'أركان بلازا',
-    date: DateTime.now().add(const Duration(days: 14)),
-    imageUrl: 'https://images.unsplash.com/photo-1581404179373-fb910e5cfac1?auto=format&fit=crop&q=80&w=1000',
-    participantsCount: 55,
-    distance: '21KM',
   ),
 ];

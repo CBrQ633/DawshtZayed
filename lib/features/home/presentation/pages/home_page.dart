@@ -3,131 +3,187 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dawsha_app/core/constants/app_constants.dart';
 import 'package:dawsha_app/data/repositories/profile_repository.dart';
+import 'package:dawsha_app/data/repositories/event_repository.dart';
+import 'package:dawsha_app/features/home/presentation/widgets/weekly_chart.dart';
+import 'package:dawsha_app/features/community/presentation/widgets/event_card.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // For now, if profile is null, we can provide a default visually, or just wait.
+    // To make sure it looks good immediately, let's use a mock profile fallback in UI
     final profileAsync = ref.watch(currentUserProfileProvider);
+    final leaderboardAsync = ref.watch(leaderboardProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: profileAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('Error: $err')),
-          data: (profile) {
-            if (profile == null) {
-              return const Center(child: Text('لم يتم العثور على بيانات الملف الشخصي'));
-            }
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              _buildHeader(context, profileAsync),
+              const SizedBox(height: 30),
+              
+              // Summary Stats
+              _buildSummaryStats(context, profileAsync),
+              
+              const SizedBox(height: 30),
+
+              // Weekly Progress Chart
+              const WeeklyChart(),
+
+              const SizedBox(height: 30),
+              
+              // Upcoming Event Card
+              _buildSectionTitle(context, 'الفعالية القادمة', () {
+                // Navigate to community -> events tab
+              }),
+              const SizedBox(height: 12),
+              ref.watch(eventsProvider).when(
+                data: (events) => events.isNotEmpty 
+                    ? EventCard(event: events.first)
+                    : const Center(child: Text('لا توجد فعاليات قادمة حالياً')),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Text('خطأ: $err'),
+              ),
+              
+              const SizedBox(height: 30),
+
+              // Top Runner
+              _buildSectionTitle(context, 'العداء المتميز 🏆', null),
+              const SizedBox(height: 12),
+              leaderboardAsync.when(
+                data: (leaders) => leaders.isNotEmpty
+                    ? _buildTopRunnerCard(leaders.first.name, '${leaders.first.totalKm.toStringAsFixed(1)} كم هذا الأسبوع', leaders.first.avatarUrl)
+                    : const Center(child: Text('لا توجد بيانات حالياً')),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Text('خطأ: $err'),
+              ),
+              
+              const SizedBox(height: 30),
+              
+              // Quick Actions
+              _buildSectionTitle(context, 'روابط سريعة', null),
+              const SizedBox(height: 12),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 2.5,
                 children: [
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'أهلاً بك،',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          Text(
-                            profile.name,
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      CircleAvatar(
-                        radius: 25,
-                        backgroundColor: AppColors.primarySilver,
-                        backgroundImage: profile.avatarUrl != null 
-                            ? NetworkImage(profile.avatarUrl!) 
-                            : null,
-                        child: profile.avatarUrl == null 
-                            ? const Icon(Icons.person, color: Colors.white) 
-                            : null,
-                      ),
-                    ],
+                  InkWell(
+                    onTap: () => context.push('/tracking'),
+                    child: _buildQuickAction(context, 'ابدأ الجري', Icons.play_arrow_rounded, AppColors.primaryGreen),
                   ),
-                  const SizedBox(height: 30),
-                  
-                  // Summary Stats
-                  Row(
-                    children: [
-                      _buildStatCard(
-                        context, 
-                        'الرتبة', 
-                        profile.rank, 
-                        Icons.emoji_events_rounded, 
-                        Colors.orange
-                      ),
-                      const SizedBox(width: 12),
-                      _buildStatCard(
-                        context, 
-                        'العملات', 
-                        profile.coins.toString(), 
-                        Icons.monetization_on_rounded, 
-                        Colors.amber
-                      ),
-                      const SizedBox(width: 12),
-                      _buildStatCard(
-                        context, 
-                        'الستريك', 
-                        '${profile.streakDays} أيام', 
-                        Icons.local_fire_department_rounded, 
-                        Colors.red
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 30),
-                  
-                  // Upcoming Event Card
-                  _buildSectionTitle(context, 'الفعالية القادمة'),
-                  const SizedBox(height: 12),
-                  _buildEventCard(context),
-                  
-                  const SizedBox(height: 30),
-                  
-                  // Quick Actions
-                  _buildSectionTitle(context, 'روابط سريعة'),
-                  const SizedBox(height: 12),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 2.5,
-                    children: [
-                      InkWell(
-                        onTap: () => context.push('/tracking'),
-                        child: _buildQuickAction(context, 'ابدأ الجري', Icons.play_arrow_rounded, AppColors.primaryGreen),
-                      ),
-                      _buildQuickAction(context, 'انضم لفعالية', Icons.event_rounded, Colors.blue),
-                      _buildQuickAction(context, 'المجتمع', Icons.people_alt_rounded, Colors.purple),
-                      _buildQuickAction(context, 'المتجر', Icons.shopping_bag_rounded, Colors.orange),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 40),
+                  _buildQuickAction(context, 'انضم لفعالية', Icons.event_rounded, Colors.blue),
+                  _buildQuickAction(context, 'المجتمع', Icons.people_alt_rounded, Colors.purple),
+                  _buildQuickAction(context, 'المتجر', Icons.shopping_bag_rounded, Colors.orange),
                 ],
               ),
-            );
-          },
+              
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, AsyncValue profileAsync) {
+    // Use fallback data if loading or null
+    final name = profileAsync.value?.name ?? 'يا بطل';
+    final avatarUrl = profileAsync.value?.avatarUrl;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'أهلاً بك،',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            Text(
+              name,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        CircleAvatar(
+          radius: 25,
+          backgroundColor: AppColors.primarySilver,
+          backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+          child: avatarUrl == null 
+              ? const Icon(Icons.person, color: Colors.white) 
+              : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopRunnerCard(String name, String status, String? avatarUrl) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+            child: avatarUrl == null ? const Icon(Icons.person) : null,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                Text(
+                  status,
+                  style: const TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.trending_up_rounded, color: AppColors.primaryGreen),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryStats(BuildContext context, AsyncValue profileAsync) {
+    final rank = profileAsync.value?.rank ?? 'مبتدئ';
+    final coins = profileAsync.value?.coins.toString() ?? '150';
+    final streak = profileAsync.value?.streakDays.toString() ?? '3';
+
+    return Row(
+      children: [
+        _buildStatCard(context, 'الرتبة', rank, Icons.emoji_events_rounded, Colors.orange),
+        const SizedBox(width: 12),
+        _buildStatCard(context, 'العملات', coins, Icons.monetization_on_rounded, Colors.amber),
+        const SizedBox(width: 12),
+        _buildStatCard(context, 'الستريك', '$streak أيام', Icons.local_fire_department_rounded, Colors.red),
+      ],
     );
   }
 
@@ -156,7 +212,7 @@ class HomePage extends ConsumerWidget {
             ),
             Text(
               label,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ],
         ),
@@ -164,7 +220,7 @@ class HomePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title) {
+  Widget _buildSectionTitle(BuildContext context, String title, VoidCallback? onSeeAll) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -174,71 +230,12 @@ class HomePage extends ConsumerWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        TextButton(
-          onPressed: () {}, 
-          child: const Text('رؤية الكل')
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEventCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        image: const DecorationImage(
-          image: NetworkImage('https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&q=80&w=1000'),
-          fit: BoxFit.cover,
-          opacity: 0.3,
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.transparent,
-              Colors.black.withValues(alpha: 0.7),
-            ],
+        if (onSeeAll != null)
+          TextButton(
+            onPressed: onSeeAll, 
+            child: const Text('رؤية الكل')
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Badge(
-              label: Text('مميز'),
-              backgroundColor: Colors.red,
-            ),
-            const SizedBox(height: 40),
-            const Text(
-              'ماراثون الجمعة 5KM',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.calendar_month, color: Colors.white70, size: 16),
-                const SizedBox(width: 4),
-                const Text('الجمعة القادم - 7:00 ص', style: TextStyle(color: Colors.white70)),
-                const SizedBox(width: 16),
-                const Icon(Icons.location_on, color: Colors.white70, size: 16),
-                const SizedBox(width: 4),
-                const Text('مدينتي', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {},
-              child: const Text('سجل الآن'),
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 
