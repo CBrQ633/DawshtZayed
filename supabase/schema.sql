@@ -251,6 +251,12 @@ BEGIN
         total_km = total_km + NEW.distance,
         xp = xp + xp_reward,
         coins = coins + coins_reward,
+        rank = CASE 
+            WHEN (total_km + NEW.distance) < 10 THEN 'مبتدئ'
+            WHEN (total_km + NEW.distance) < 50 THEN 'هاوي'
+            WHEN (total_km + NEW.distance) < 200 THEN 'عداء نشط'
+            ELSE 'محترف دوشة'
+        END,
         streak_days = CASE 
             WHEN (last_activity_date IS NULL OR last_activity_date < CURRENT_DATE - INTERVAL '1 day') THEN 1
             WHEN last_activity_date = CURRENT_DATE - INTERVAL '1 day' THEN streak_days + 1
