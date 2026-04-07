@@ -10,6 +10,7 @@ class EventModel {
   final bool isFeatured;
   final String? difficulty;
   final String? coachName;
+  final bool isJoinedByMe;
 
   EventModel({
     required this.id,
@@ -23,6 +24,7 @@ class EventModel {
     this.isFeatured = false,
     this.difficulty,
     this.coachName,
+    this.isJoinedByMe = false,
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class EventModel {
       isFeatured: json['is_featured'] ?? false,
       difficulty: json['difficulty'],
       coachName: json['coach_name'],
+      isJoinedByMe: json['is_joined_by_me'] ?? false,
     );
   }
 

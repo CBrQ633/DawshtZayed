@@ -64,6 +64,20 @@ CREATE TABLE public.events (
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Events are viewable by everyone." ON events FOR SELECT USING (true);
 
+-- 2.1 Event Participants Table
+CREATE TABLE public.event_participants (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    event_id UUID REFERENCES public.events(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(event_id, user_id)
+);
+
+ALTER TABLE public.event_participants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Participants viewable by everyone" ON event_participants FOR SELECT USING (true);
+CREATE POLICY "Users can join events" ON event_participants FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can leave events" ON event_participants FOR DELETE USING (auth.uid() = user_id);
+
 -- 3. Posts Table (Community Activity Feed)
 CREATE TABLE public.posts (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -313,6 +327,24 @@ DROP TRIGGER IF EXISTS tr_after_comment_insert ON public.post_comments;
 CREATE TRIGGER tr_after_comment_insert AFTER INSERT ON public.post_comments FOR EACH ROW EXECUTE PROCEDURE public.fn_on_post_interaction();
 DROP TRIGGER IF EXISTS tr_after_comment_delete ON public.post_comments;
 CREATE TRIGGER tr_after_comment_delete AFTER DELETE ON public.post_comments FOR EACH ROW EXECUTE PROCEDURE public.fn_on_post_interaction();
+
+-- 13. Event Participation Triggers: تحديث عدد المشاركين تلقائياً
+CREATE OR REPLACE FUNCTION public.fn_on_event_interaction()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        UPDATE public.events SET participants_count = participants_count + 1 WHERE id = NEW.event_id;
+    ELSIF (TG_OP = 'DELETE') THEN
+        UPDATE public.events SET participants_count = participants_count - 1 WHERE id = OLD.event_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_after_event_join ON public.event_participants;
+CREATE TRIGGER tr_after_event_join AFTER INSERT ON public.event_participants FOR EACH ROW EXECUTE PROCEDURE public.fn_on_event_interaction();
+DROP TRIGGER IF EXISTS tr_after_event_leave ON public.event_participants;
+CREATE TRIGGER tr_after_event_leave AFTER DELETE ON public.event_participants FOR EACH ROW EXECUTE PROCEDURE public.fn_on_event_interaction();
 
 -- 11. Store Purchase RPC: عملية شراء آمنة (Atomic Transaction)
 -- تتعامل مع الرصيد، المخزن، وضافة الطلب في خطوة واحدة

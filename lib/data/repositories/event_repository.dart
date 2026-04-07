@@ -8,17 +8,42 @@ class EventRepository {
 
   EventRepository(this._supabase);
 
-  Future<List<EventModel>> getEvents() async {
+  Future<List<EventModel>> getEvents(String? userId) async {
     try {
       final response = await _supabase
           .from('events')
-          .select()
+          .select('*, event_participants(user_id)')
           .order('event_date', ascending: true);
       
-      final events = (response as List).map((e) => EventModel.fromJson(e)).toList();
-      return events.isNotEmpty ? events : dummyEvents;
+      return (response as List).map((e) {
+        final participants = (e['event_participants'] as List?) ?? [];
+        final isJoined = userId != null && participants.any((p) => p['user_id'] == userId);
+        
+        return EventModel.fromJson({
+          ...e,
+          'is_joined_by_me': isJoined,
+        });
+      }).toList();
     } catch (e) {
       return dummyEvents;
+    }
+  }
+
+  Future<bool> toggleJoinEvent(String eventId, String userId, bool currentlyJoined) async {
+    try {
+      if (currentlyJoined) {
+        await _supabase
+            .from('event_participants')
+            .delete()
+            .match({'event_id': eventId, 'user_id': userId});
+      } else {
+        await _supabase
+            .from('event_participants')
+            .insert({'event_id': eventId, 'user_id': userId});
+      }
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 }
@@ -29,5 +54,6 @@ final eventRepositoryProvider = Provider<EventRepository>((ref) {
 });
 
 final eventsProvider = FutureProvider<List<EventModel>>((ref) async {
-  return ref.watch(eventRepositoryProvider).getEvents();
+  final user = ref.watch(authStateProvider).value?.session?.user;
+  return ref.watch(eventRepositoryProvider).getEvents(user?.id);
 });

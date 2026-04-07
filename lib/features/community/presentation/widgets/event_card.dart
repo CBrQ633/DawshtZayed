@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dawsha_app/core/constants/app_constants.dart';
 import 'package:dawsha_app/data/models/event_model.dart';
+import 'package:dawsha_app/data/repositories/event_repository.dart';
+import 'package:dawsha_app/data/repositories/auth_repository.dart';
 import 'package:intl/intl.dart';
 
-class EventCard extends StatelessWidget {
+class EventCard extends ConsumerWidget {
   final EventModel event;
 
   const EventCard({super.key, required this.event});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateProvider).value?.session?.user;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -119,12 +124,34 @@ class EventCard extends StatelessWidget {
                       ],
                     ),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        if (user == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('يرجى تسجيل الدخول للانضمام')),
+                          );
+                          return;
+                        }
+                        
+                        final success = await ref.read(eventRepositoryProvider).toggleJoinEvent(
+                          event.id, 
+                          user.id, 
+                          event.isJoinedByMe
+                        );
+                        
+                        if (success) {
+                          ref.invalidate(eventsProvider);
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryGreen,
+                        backgroundColor: event.isJoinedByMe ? Colors.white : AppColors.primaryGreen,
+                        foregroundColor: event.isJoinedByMe ? AppColors.primaryGreen : Colors.white,
+                        side: event.isJoinedByMe ? const BorderSide(color: AppColors.primaryGreen) : null,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),
-                      child: const Text('تفاصيل', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(
+                        event.isJoinedByMe ? 'تم الانضمام' : 'انضم الآن', 
+                        style: const TextStyle(fontWeight: FontWeight.bold)
+                      ),
                     ),
                   ],
                 ),
