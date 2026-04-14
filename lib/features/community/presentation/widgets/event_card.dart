@@ -13,15 +13,21 @@ class EventCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final user = ref.watch(authStateProvider).value?.session?.user;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
@@ -38,8 +44,8 @@ class EventCard extends ConsumerWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
                   height: 140,
-                  color: Colors.grey[800],
-                  child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
+                  color: isDark ? Colors.grey[900] : Colors.grey[200],
+                  child: Center(child: Icon(Icons.image_not_supported, color: isDark ? Colors.grey[800] : Colors.grey)),
                 ),
               ),
               if (event.isFeatured)
@@ -70,7 +76,11 @@ class EventCard extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         event.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 18, 
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -78,7 +88,7 @@ class EventCard extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withOpacity(0.1),
+                        color: AppColors.primaryGreen.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppColors.primaryGreen),
                       ),
@@ -89,23 +99,23 @@ class EventCard extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.calendar_month, size: 16, color: AppColors.textSecondary),
+                    Icon(Icons.calendar_month, size: 16, color: isDark ? Colors.grey[400] : AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(
                       DateFormat('EEE, d MMM • h:mm a').format(event.date),
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: TextStyle(color: isDark ? Colors.grey[400] : AppColors.textSecondary, fontSize: 13),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.location_on, size: 16, color: AppColors.textSecondary),
+                    Icon(Icons.location_on, size: 16, color: isDark ? Colors.grey[400] : AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         event.location,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        style: TextStyle(color: isDark ? Colors.grey[400] : AppColors.textSecondary, fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -120,7 +130,14 @@ class EventCard extends ConsumerWidget {
                       children: [
                         const Icon(Icons.people, size: 18, color: Colors.blue),
                         const SizedBox(width: 4),
-                        Text('${event.participantsCount} مشارك', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text(
+                          '${event.participantsCount} مشارك', 
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            fontSize: 14,
+                            color: isDark ? Colors.white : AppColors.textPrimary,
+                          ),
+                        ),
                       ],
                     ),
                     ElevatedButton(
@@ -143,8 +160,12 @@ class EventCard extends ConsumerWidget {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: event.isJoinedByMe ? Colors.white : AppColors.primaryGreen,
-                        foregroundColor: event.isJoinedByMe ? AppColors.primaryGreen : Colors.white,
+                        backgroundColor: event.isJoinedByMe 
+                            ? (isDark ? Colors.white12 : Colors.white) 
+                            : AppColors.primaryGreen,
+                        foregroundColor: event.isJoinedByMe 
+                            ? AppColors.primaryGreen 
+                            : Colors.white,
                         side: event.isJoinedByMe ? const BorderSide(color: AppColors.primaryGreen) : null,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),

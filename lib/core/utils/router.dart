@@ -10,8 +10,10 @@ import 'package:dawsha_app/features/activities/presentation/pages/explore_map_sc
 import 'package:dawsha_app/features/community/presentation/pages/community_screen.dart';
 import 'package:dawsha_app/features/store/presentation/pages/store_screen.dart';
 import 'package:dawsha_app/features/profile/presentation/pages/profile_screen.dart';
+import 'package:dawsha_app/features/profile/presentation/pages/settings_screen.dart';
 import 'package:dawsha_app/data/models/activity_model.dart';
 import 'package:dawsha_app/core/presentation/pages/main_layout.dart';
+import 'package:dawsha_app/features/community/presentation/pages/create_post_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -94,6 +96,14 @@ final appRouter = GoRouter(
         final activity = state.extra as ActivityModel;
         return ActivitySummaryScreen(activity: activity);
       },
+    ),
+    GoRoute(
+      path: '/create_post',
+      builder: (context, state) => const CreatePostScreen(),
+    ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsScreen(),
     ),
   ],
 );

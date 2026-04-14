@@ -52,7 +52,7 @@ class ProfileRepository {
       
       return publicUrl;
     } catch (e) {
-      print('Error uploading avatar: $e');
+      // print('Error uploading avatar: $e');
       return null;
     }
   }

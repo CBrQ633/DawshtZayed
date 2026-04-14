@@ -50,13 +50,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('تعديل البيانات', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('تعديل البيانات', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        iconTheme: IconThemeData(color: isDark ? Colors.white : AppColors.textPrimary),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -69,12 +73,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 60,
-                    backgroundColor: AppColors.surface,
+                    backgroundColor: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
                     backgroundImage: _imageFile != null 
                       ? FileImage(_imageFile!) as ImageProvider
                       : (widget.profile.avatarUrl != null ? NetworkImage(widget.profile.avatarUrl!) : null),
                     child: (widget.profile.avatarUrl == null && _imageFile == null) 
-                      ? const Icon(Icons.person, size: 60, color: Colors.grey) 
+                      ? Icon(Icons.person, size: 60, color: isDark ? Colors.grey[600] : Colors.grey) 
                       : null,
                   ),
                   Positioned(
@@ -96,47 +100,53 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            // ... (rest of the fields)
-            const Text('الاسم بالكامل', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            
+            _buildLabel('الاسم بالكامل', isDark),
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
+              style: TextStyle(color: isDark ? Colors.white : AppColors.textPrimary),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: AppColors.surface,
+                fillColor: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                hintStyle: TextStyle(color: isDark ? Colors.grey[400] : AppColors.textSecondary),
               ),
             ),
             const SizedBox(height: 24),
 
             // City Field
-            const Text('المدينة', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            _buildLabel('المدينة', isDark),
             const SizedBox(height: 8),
             TextField(
               controller: _cityController,
+              style: TextStyle(color: isDark ? Colors.white : AppColors.textPrimary),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: AppColors.surface,
+                fillColor: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 hintText: 'الشيخ زايد، 6 أكتوبر...',
+                hintStyle: TextStyle(color: isDark ? Colors.grey[400] : AppColors.textSecondary),
               ),
             ),
             const SizedBox(height: 24),
 
             // Fitness Level Dropdown
-            const Text('مستوى اللياقة', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+            _buildLabel('مستوى اللياقة', isDark),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _fitnessLevel,
                   isExpanded: true,
-                  hint: const Text('اختر مستواك'),
+                  dropdownColor: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
+                  style: TextStyle(color: isDark ? Colors.white : AppColors.textPrimary, fontSize: 16),
+                  hint: Text('اختر مستواك', style: TextStyle(color: isDark ? Colors.grey[400] : AppColors.textSecondary)),
                   items: ['مبتدئ', 'متوسط', 'متقدم', 'محترف'].map((level) {
                     return DropdownMenuItem(value: level, child: Text(level));
                   }).toList(),
@@ -163,6 +173,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text, bool isDark) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.bold, 
+        color: isDark ? Colors.grey[300] : AppColors.textSecondary
       ),
     );
   }

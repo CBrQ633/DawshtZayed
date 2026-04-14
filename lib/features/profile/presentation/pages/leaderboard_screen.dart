@@ -9,24 +9,27 @@ class LeaderboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final leaderboardAsync = ref.watch(leaderboardProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('لوحة المتصدرين 🏆', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('لوحة المتصدرين 🏆', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        iconTheme: IconThemeData(color: isDark ? Colors.white : AppColors.textPrimary),
       ),
       body: leaderboardAsync.when(
         data: (users) {
           if (users.isEmpty) {
-            return const Center(child: Text('لا يوجد متصدرون حالياً'));
+            return Center(child: Text('لا يوجد متصدرون حالياً', style: TextStyle(color: isDark ? Colors.grey[400] : AppColors.textSecondary)));
           }
 
           final topThree = users.take(3).toList();
-          final others = users.length > 3 ? users.sublist(3) : <ProfileModel>[];
+          final others = (users as List).length > 3 ? users.sublist(3) : <ProfileModel>[];
 
           return Column(
             children: [
@@ -38,11 +41,11 @@ class LeaderboardScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     // Second Place
-                    if (topThree.length >= 2) _buildPodium(topThree[1], 2, 100),
+                    if (topThree.length >= 2) _buildPodium(topThree[1], 2, 100, isDark),
                     // First Place
-                    if (topThree.isNotEmpty) _buildPodium(topThree[0], 1, 140),
+                    if (topThree.isNotEmpty) _buildPodium(topThree[0], 1, 140, isDark),
                     // Third Place
-                    if (topThree.length >= 3) _buildPodium(topThree[2], 3, 90),
+                    if (topThree.length >= 3) _buildPodium(topThree[2], 3, 90, isDark),
                   ],
                 ),
               ),
@@ -56,7 +59,7 @@ class LeaderboardScreen extends ConsumerWidget {
                   itemCount: others.length,
                   itemBuilder: (context, index) {
                     final user = others[index];
-                    return _buildUserTile(user, index + 4);
+                    return _buildUserTile(user, index + 4, isDark);
                   },
                 ),
               ),
@@ -64,12 +67,12 @@ class LeaderboardScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
-        error: (e, stack) => Center(child: Text('حدث خطأ: $e')),
+        error: (e, stack) => Center(child: Text('حدث خطأ: $e', style: const TextStyle(color: Colors.red))),
       ),
     );
   }
 
-  Widget _buildPodium(ProfileModel user, int rank, double height) {
+  Widget _buildPodium(ProfileModel user, int rank, double height, bool isDark) {
     Color medalColor = rank == 1 ? Colors.orange : (rank == 2 ? Colors.grey : Colors.brown);
     return Column(
       children: [
@@ -81,7 +84,9 @@ class LeaderboardScreen extends ConsumerWidget {
               backgroundColor: medalColor,
               child: CircleAvatar(
                 radius: height / 4,
-                backgroundImage: NetworkImage(user.avatarUrl!),
+                backgroundColor: isDark ? Colors.white10 : AppColors.primarySilver,
+                backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+                child: user.avatarUrl == null ? Icon(Icons.person, color: isDark ? Colors.grey[400] : Colors.white) : null,
               ),
             ),
             Positioned(
@@ -89,13 +94,20 @@ class LeaderboardScreen extends ConsumerWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(color: medalColor, borderRadius: BorderRadius.circular(10)),
-                child: Text('$rank', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                child: Text('$rank', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white)),
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        Text(user.name.split(' ')[0], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(
+          user.name.split(' ')[0], 
+          style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            fontSize: 14,
+            color: isDark ? Colors.white : AppColors.textPrimary,
+          ),
+        ),
         Text('${user.totalKm.toStringAsFixed(1)} كم', style: const TextStyle(color: AppColors.primaryGreen, fontSize: 12)),
         const SizedBox(height: 8),
         Container(
@@ -114,31 +126,52 @@ class LeaderboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildUserTile(ProfileModel user, int rank) {
+  Widget _buildUserTile(ProfileModel user, int rank, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
           SizedBox(
             width: 30,
-            child: Text('#$rank', style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+            child: Text(
+              '#$rank', 
+              style: TextStyle(
+                color: isDark ? Colors.grey[500] : AppColors.textSecondary, 
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           CircleAvatar(
-            backgroundImage: NetworkImage(user.avatarUrl ?? 'https://via.placeholder.com/150'),
+            backgroundColor: isDark ? Colors.white10 : AppColors.primarySilver,
+            backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+            child: user.avatarUrl == null ? Icon(Icons.person, color: isDark ? Colors.grey[600] : Colors.white, size: 20) : null,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(user.rank, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(
+                  user.name, 
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 16,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  user.rank, 
+                  style: TextStyle(
+                    color: isDark ? Colors.grey[400] : AppColors.textSecondary, 
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),

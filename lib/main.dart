@@ -31,7 +31,7 @@ class DawshaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system, // Will adapt to user's device theme
+      themeMode: ThemeMode.light, // Forces light theme to avoid color contrasting issues with hardcoded AppColors
       routerConfig: appRouter,
     );
   }

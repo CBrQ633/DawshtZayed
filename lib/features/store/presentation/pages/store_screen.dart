@@ -72,7 +72,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                       final item = filteredItems[index];
                       return StoreItemCard(
                         item: item,
-                        canAfford: userBalance >= item.price,
+                        canAfford: userBalance >= item.priceInCoins,
                         onTap: () => _showPurchaseDialog(context, item, userBalance),
                       );
                     },
@@ -130,7 +130,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
   }
 
   void _showPurchaseDialog(BuildContext context, StoreItemModel item, int balance) {
-    if (balance < item.price) {
+    if (balance < item.priceInCoins) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('رصيدك لا يكفي لإتمام هذه العملية!')),
       );
@@ -141,7 +141,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('تأكيد الشراء', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('هل أنت متأكد من شراء "${item.name}" مقابل ${item.price} عملة؟'),
+        content: Text('هل أنت متأكد من شراء "${item.name}" مقابل ${item.priceInCoins} عملة؟'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
@@ -157,9 +157,11 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
 
               final success = await ref.read(storeRepositoryProvider).purchaseItem(
                 item.id, 
-                item.price, 
+                item.priceInCoins, 
                 profile.id,
               );
+
+              if (!context.mounted) return;
 
               if (success) {
                 // Refresh profile to see new balance
@@ -179,6 +181,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                 );
               }
             },
+
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryGreen,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

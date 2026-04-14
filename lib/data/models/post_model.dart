@@ -2,7 +2,7 @@ class PostModel {
   final String id;
   final String userId;
   final String? caption;
-  final String? mediaUrl;
+  final List<String> mediaUrls;
   final String? mediaType;
   final String? locationTag;
   final double distanceKm;
@@ -19,7 +19,7 @@ class PostModel {
     required this.id,
     required this.userId,
     this.caption,
-    this.mediaUrl,
+    this.mediaUrls = const [],
     this.mediaType = 'image',
     this.locationTag,
     this.distanceKm = 0.0,
@@ -34,11 +34,14 @@ class PostModel {
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
+    // Handle mediaUrls which could be text[] from Supabase (comes as List<dynamic>)
+    final List<dynamic> urls = json['media_urls'] ?? [];
+    
     return PostModel(
       id: json['id'],
       userId: json['user_id'],
       caption: json['caption'],
-      mediaUrl: json['media_url'],
+      mediaUrls: urls.map((e) => e.toString()).toList(),
       mediaType: json['media_type'],
       locationTag: json['location_tag'],
       distanceKm: (json['distance_km'] ?? 0.0).toDouble(),
@@ -60,7 +63,7 @@ class PostModel {
       'id': id,
       'user_id': userId,
       'caption': caption,
-      'media_url': mediaUrl,
+      'media_urls': mediaUrls,
       'media_type': mediaType,
       'location_tag': locationTag,
       'distance_km': distanceKm,

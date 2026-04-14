@@ -33,6 +33,14 @@ class AuthRepository {
     );
   }
 
+  // Sign in with Google
+  Future<void> signInWithGoogle() async {
+    await _supabase.auth.signInWithOAuth(
+      OAuthProvider.google,
+      // redirectTo: 'io.supabase.dawsha://login-callback',
+    );
+  }
+
   // Sign out
   Future<void> signOut() async {
     await _supabase.auth.signOut();

@@ -17,6 +17,8 @@ class ChallengeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final bool isJoined = participation != null;
     final double progress = participation?.progress ?? 0.0;
     final double percent = (progress / challenge.goalValue).clamp(0.0, 1.0);
@@ -25,11 +27,11 @@ class ChallengeCard extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -47,6 +49,11 @@ class ChallengeCard extends ConsumerWidget {
                 height: 120,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 120,
+                  color: isDark ? Colors.grey[900] : Colors.grey[200],
+                  child: Center(child: Icon(Icons.image_not_supported, color: isDark ? Colors.grey[800] : Colors.grey)),
+                ),
               ),
               Container(
                 height: 120,
@@ -83,12 +90,19 @@ class ChallengeCard extends ConsumerWidget {
               children: [
                 Text(
                   challenge.title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold, 
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   challenge.description,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 13, 
+                    color: isDark ? Colors.grey[400] : AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -99,12 +113,15 @@ class ChallengeCard extends ConsumerWidget {
                       Text(
                         isCompleted ? 'تم الإكمال! 🎉' : 'التقدم: ${progress.toStringAsFixed(1)} / ${challenge.goalValue} كم',
                         style: TextStyle(
-                          color: isCompleted ? AppColors.primaryGreen : AppColors.textPrimary,
+                          color: isCompleted ? AppColors.primaryGreen : (isDark ? Colors.white : AppColors.textPrimary),
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
                       ),
-                      Text('${(percent * 100).toInt()}%', style: const TextStyle(color: AppColors.textSecondary)),
+                      Text(
+                        '${(percent * 100).toInt()}%', 
+                        style: TextStyle(color: isDark ? Colors.grey[400] : AppColors.textSecondary),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -112,7 +129,7 @@ class ChallengeCard extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
                       value: percent,
-                      backgroundColor: Colors.white10,
+                      backgroundColor: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
                       color: isCompleted ? AppColors.primaryGreen : Colors.blue,
                       minHeight: 8,
                     ),

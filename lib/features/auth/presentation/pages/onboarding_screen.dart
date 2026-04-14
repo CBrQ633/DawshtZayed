@@ -17,17 +17,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     {
       'title': 'مرحباً بك في دوشة Zayed',
       'description': 'أكبر مجتمع رياضي وتفاعلي في الشيخ زايد و 6 أكتوبر. ابدأ رحلتك الصحية معنا اليوم.',
-      'image': 'assets/images/onboarding1.png'
+      'image': 'assets/images/logo.png' 
     },
     {
       'title': 'اشترك في الفعاليات',
       'description': 'شارك في جولات الجري الأسبوعية، التحديات الرياضية، والتدريبات مع أفضل المدربين.',
-      'image': 'assets/images/onboarding2.png'
+      'image': 'assets/images/logo.png'
     },
     {
       'title': 'اركض، اربح، وتسوّق',
-      'description': 'كل كيلومتر تقطعه يمنحك عملات دوشة. استبدلها بخصومات حقيقية أو تسوق من متجرنا.',
-      'image': 'assets/images/onboarding3.png'
+      'description': 'كل كيلومتر تقطعه يمنحك عملات دوشة. استبدلها بخصومات حقيقية من متجرنا.',
+      'image': 'assets/images/logo.png'
     },
   ];
 
@@ -38,63 +38,79 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      // Go to Login
       context.go('/login');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => context.go('/login'),
+                child: Text(
+                  'تخطي',
+                  style: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondary, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _onboardingData.length,
                 onPageChanged: (index) {
-                  setState(() {
-                    _currentPage = index;
-                  });
+                  setState(() => _currentPage = index);
                 },
                 itemBuilder: (context, index) {
                   return Padding(
-                    padding: const EdgeInsets.all(40.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Placeholder for image
+                        // Image Placeholder / Logo
                         Container(
-                          height: 300,
+                          height: 250,
+                          padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: AppColors.primarySilver.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(20),
+                            color: isDark ? Colors.white10 : AppColors.primarySilver.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(30),
                           ),
                           child: Center(
-                            child: Icon(
-                              Icons.sports_rounded,
-                              size: 100,
-                              color: AppColors.primaryGreen.withValues(alpha: 0.7),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => Icon(
+                                Icons.sports_rounded,
+                                size: 100,
+                                color: AppColors.primaryGreen.withValues(alpha: 0.7),
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 48),
                         Text(
                           _onboardingData[index]['title']!,
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                          style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                            color: isDark ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           _onboardingData[index]['description']!,
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: AppColors.textSecondary,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: isDark ? Colors.grey[400] : AppColors.textSecondary,
+                            height: 1.5,
                           ),
                         ),
                       ],
@@ -104,7 +120,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: Column(
                 children: [
                   // Indicators
@@ -112,15 +128,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
                       _onboardingData.length,
-                      (index) => Container(
-                        margin: const EdgeInsets.only(right: 5),
-                        height: 10,
-                        width: _currentPage == index ? 20 : 10,
+                      (index) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        margin: const EdgeInsets.only(right: 8),
+                        height: 8,
+                        width: _currentPage == index ? 24 : 8,
                         decoration: BoxDecoration(
                           color: _currentPage == index
                               ? AppColors.primaryGreen
-                              : AppColors.primarySilver,
-                          borderRadius: BorderRadius.circular(5),
+                              : (isDark ? Colors.white24 : AppColors.primarySilver),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
@@ -128,21 +145,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const SizedBox(height: 40),
                   SizedBox(
                     width: double.infinity,
+                    height: 56,
                     child: ElevatedButton(
                       onPressed: _onNext,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
                       child: Text(
-                        _currentPage == _onboardingData.length - 1 ? 'ابدأ الآن' : 'التالي',
+                        _currentPage == _onboardingData.length - 1 ? 'ابدأ رحلتك الآن' : 'التالي',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-                  if (_currentPage < _onboardingData.length - 1)
-                    TextButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text(
-                        'تخطى',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ),
-                    ),
                 ],
               ),
             ),

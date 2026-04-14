@@ -6,6 +6,8 @@ class WeeklyChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     // Dummy weight/km data for the week
     final List<double> weeklyData = [3.2, 5.0, 0, 4.5, 6.2, 0, 2.8];
     final List<String> days = ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
@@ -14,11 +16,11 @@ class WeeklyChart extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? const Color(0xFF1E1E1E) : AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -30,12 +32,12 @@ class WeeklyChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'النشاط الأسبوعي',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: AppColors.textPrimary,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
                 ),
               ),
               Container(
@@ -74,7 +76,7 @@ class WeeklyChart extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: isToday 
                               ? AppColors.primaryGreen 
-                              : AppColors.primaryGreen.withValues(alpha: 0.2),
+                              : AppColors.primaryGreen.withValues(alpha: isDark ? 0.15 : 0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: FractionallySizedBox(
@@ -94,7 +96,7 @@ class WeeklyChart extends StatelessWidget {
                       days[index],
                       style: TextStyle(
                         fontSize: 12,
-                        color: isToday ? AppColors.primaryGreen : AppColors.textSecondary,
+                        color: isToday ? AppColors.primaryGreen : (isDark ? Colors.grey[500] : AppColors.textSecondary),
                         fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),

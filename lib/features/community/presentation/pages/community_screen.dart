@@ -10,30 +10,33 @@ import 'package:dawsha_app/data/repositories/auth_repository.dart';
 import 'package:dawsha_app/features/community/presentation/widgets/challenge_card.dart';
 import 'package:dawsha_app/features/profile/presentation/pages/leaderboard_screen.dart';
 import 'package:dawsha_app/data/models/challenge_model.dart';
+import 'package:go_router/go_router.dart';
 
 class CommunityScreen extends ConsumerWidget {
   const CommunityScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final postsAsync = ref.watch(postsProvider);
     final eventsAsync = ref.watch(eventsProvider);
 
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          title: const Text('المجتمع', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: AppColors.background,
+          title: Text('المجتمع', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+          backgroundColor: Colors.transparent,
           elevation: 0,
           centerTitle: true,
-          bottom: const TabBar(
+          bottom: TabBar(
             indicatorColor: AppColors.primaryGreen,
             labelColor: AppColors.primaryGreen,
-            unselectedLabelColor: Colors.grey,
+            unselectedLabelColor: isDark ? Colors.grey[600] : Colors.grey,
             indicatorWeight: 3,
-            tabs: [
+            tabs: const [
               Tab(text: 'المنشورات'),
               Tab(text: 'الفعاليات'),
               Tab(text: 'التحديات'),
@@ -43,23 +46,30 @@ class CommunityScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            _buildFeedTab(postsAsync, ref),
-            _buildEventsTab(eventsAsync),
-            _buildChallengesTab(ref),
+            _buildFeedTab(postsAsync, ref, isDark),
+            _buildEventsTab(eventsAsync, isDark),
+            _buildChallengesTab(ref, isDark),
             const LeaderboardScreen(),
           ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: AppColors.primaryGreen,
+          child: const Icon(Icons.add, color: Colors.white),
+          onPressed: () {
+            GoRouter.of(context).push('/create_post');
+          },
         ),
       ),
     );
   }
 
-  Widget _buildFeedTab(AsyncValue postsAsync, WidgetRef ref) {
+  Widget _buildFeedTab(AsyncValue postsAsync, WidgetRef ref, bool isDark) {
     final user = ref.watch(authStateProvider).value?.session?.user;
 
     return postsAsync.when(
       data: (posts) => ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: posts.length,
+        itemCount: (posts as List).length,
         itemBuilder: (context, index) {
           final post = posts[index];
           return PostCard(
@@ -87,21 +97,31 @@ class CommunityScreen extends ConsumerWidget {
         },
       ),
       loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
-      error: (err, stack) => Center(child: Text('خطأ في جلب المنشورات: $err')),
+      error: (err, stack) => Center(
+        child: Text(
+          'خطأ في جلب المنشورات: $err',
+          style: TextStyle(color: isDark ? Colors.red[300] : Colors.red),
+        ),
+      ),
     );
   }
 
-  Widget _buildEventsTab(AsyncValue eventsAsync) {
+  Widget _buildEventsTab(AsyncValue eventsAsync, bool isDark) {
     return eventsAsync.when(
       data: (events) => ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: events.length,
+        itemCount: (events as List).length,
         itemBuilder: (context, index) {
           return EventCard(event: events[index]);
         },
       ),
       loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
-      error: (err, stack) => Center(child: Text('خطأ في جلب الفعاليات: $err')),
+      error: (err, stack) => Center(
+        child: Text(
+          'خطأ في جلب الفعاليات: $err',
+          style: TextStyle(color: isDark ? Colors.red[300] : Colors.red),
+        ),
+      ),
     );
   }
 
@@ -113,7 +133,7 @@ class CommunityScreen extends ConsumerWidget {
     return 'الآن';
   }
 
-  Widget _buildChallengesTab(WidgetRef ref) {
+  Widget _buildChallengesTab(WidgetRef ref, bool isDark) {
     final challengesAsync = ref.watch(activeChallengesProvider);
     final userChallengesAsync = ref.watch(userChallengesProvider);
 
@@ -123,7 +143,7 @@ class CommunityScreen extends ConsumerWidget {
         
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: challenges.length,
+          itemCount: (challenges as List).length,
           itemBuilder: (context, index) {
             final challenge = challenges[index];
             final participation = userParticipations.firstWhere(
@@ -139,7 +159,12 @@ class CommunityScreen extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
-      error: (err, stack) => Center(child: Text('خطأ في جلب التحديات: $err')),
+      error: (err, stack) => Center(
+        child: Text(
+          'خطأ في جلب التحديات: $err',
+          style: TextStyle(color: isDark ? Colors.red[300] : Colors.red),
+        ),
+      ),
     );
   }
 }

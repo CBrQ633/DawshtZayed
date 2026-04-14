@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dawsha_app/data/models/post_model.dart';
@@ -31,6 +32,28 @@ class PostRepository {
 
   Future<void> createPost(PostModel post) async {
     await _supabase.from('posts').insert(post.toJson());
+  }
+
+  Future<List<String>> uploadPostImages(String userId, List<File> imageFiles) async {
+    List<String> uploadedUrls = [];
+    try {
+      for (var i = 0; i < imageFiles.length; i++) {
+        final file = imageFiles[i];
+        final fileName = '$userId/post_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        
+        await _supabase.storage.from('post_images').upload(
+          fileName,
+          file,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+        );
+        
+        final String publicUrl = _supabase.storage.from('post_images').getPublicUrl(fileName);
+        uploadedUrls.add(publicUrl);
+      }
+      return uploadedUrls;
+    } catch (e) {
+      return uploadedUrls; // Return what we managed to upload so far, or empty list
+    }
   }
 
   Future<bool> toggleLike(String postId, String userId, bool currentlyLiked) async {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dawsha_app/core/constants/app_constants.dart';
 import 'package:dawsha_app/data/repositories/profile_repository.dart';
+import 'package:go_router/go_router.dart';
+import 'package:dawsha_app/data/repositories/auth_repository.dart';
 import 'package:dawsha_app/features/profile/presentation/widgets/profile_stat_tile.dart';
 import 'package:dawsha_app/features/profile/presentation/pages/edit_profile_screen.dart';
 import 'package:dawsha_app/features/profile/presentation/pages/leaderboard_screen.dart';
@@ -11,220 +13,222 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final profileAsync = ref.watch(currentUserProfileProvider);
 
-    // Mock data for display purposes
-    final name = profileAsync.value?.name ?? 'يا بطل';
-    final email = profileAsync.value?.email ?? 'runner@dawsha.com';
-    final avatarUrl = profileAsync.value?.avatarUrl;
-    final totalKm = profileAsync.value?.totalKm.toStringAsFixed(1) ?? '42.5';
-    final runs = profileAsync.value?.streakDays.toString() ?? '12';
-    final pace = profileAsync.value?.preferredPace ?? '5:30 /km';
-
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('حسابي', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: false,
+        title: const Text('الملف الشخصي', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_rounded, color: AppColors.textPrimary),
-            onPressed: () {},
+            icon: Icon(Icons.settings_rounded, color: isDark ? Colors.white : AppColors.textPrimary),
+            onPressed: () => context.push('/settings'),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Column(
-          children: [
-            // Header: Avatar & Name
-            Center(
+      body: profileAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen)),
+        error: (err, stack) => Center(child: Text('خطأ في تحميل البيانات: $err')),
+        data: (profile) {
+          if (profile == null) {
+            return const Center(child: Text('لم يتم العثور على بيانات الحساب.'));
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(currentUserProfileProvider),
+            color: AppColors.primaryGreen,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primaryGreen, width: 3),
-                    ),
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundColor: AppColors.primarySilver,
-                      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                      child: avatarUrl == null 
-                          ? const Icon(Icons.person, color: Colors.white, size: 50) 
-                          : null,
+                  // Profile Header
+                  Column(
+                    children: [
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: isDark ? Colors.white10 : AppColors.primarySilver,
+                            backgroundImage: profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
+                                ? NetworkImage(profile.avatarUrl!)
+                                : null,
+                            child: profile.avatarUrl == null || profile.avatarUrl!.isEmpty
+                                ? Icon(Icons.person, size: 50, color: isDark ? Colors.white70 : Colors.grey)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primaryGreen,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        profile.name,
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        profile.email,
+                        style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          profile.rank,
+                          style: const TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Stats Grid
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    children: [
+                      ProfileStatTile(
+                        label: 'كم',
+                        value: profile.totalKm.toStringAsFixed(1),
+                        icon: Icons.directions_run_rounded,
+                        color: Colors.blue,
+                      ),
+                      ProfileStatTile(
+                        label: 'عملة',
+                        value: profile.coins.toString(),
+                        icon: Icons.monetization_on_rounded,
+                        color: Colors.amber,
+                      ),
+                      ProfileStatTile(
+                        label: 'يوم صمود',
+                        value: profile.streakDays.toString(),
+                        icon: Icons.local_fire_department_rounded,
+                        color: Colors.orange,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Actions List
+                  _buildActionItem(
+                    context,
+                    'تعديل الملف الشخصي',
+                    Icons.person_outline_rounded,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => EditProfileScreen(profile: profile)),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                  _buildActionItem(
+                    context,
+                    'متصدرين دوشة',
+                    Icons.leaderboard_outlined,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LeaderboardScreen()),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    email,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
-                    ),
+                  _buildActionItem(
+                    context,
+                    'تاريخ الأنشطة',
+                    Icons.history_rounded,
+                    onTap: () {},
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      if (profileAsync.value != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditProfileScreen(profile: profileAsync.value!),
+                  _buildActionItem(
+                    context,
+                    'الإنجازات',
+                    Icons.emoji_events_outlined,
+                    onTap: () {},
+                  ),
+                  
+                  const SizedBox(height: 24),
+
+                  // Logout
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('تسجيل الخروج'),
+                            content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true), 
+                                child: const Text('خروج', style: TextStyle(color: Colors.red))
+                              ),
+                            ],
                           ),
                         );
-                      }
-                    },
-                    icon: const Icon(Icons.edit_rounded, size: 18),
-                    label: const Text('تعديل البيانات'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+
+                        if (confirm == true) {
+                          await ref.read(authRepositoryProvider).signOut();
+                          if (context.mounted) {
+                            context.go('/login');
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.logout_rounded, color: Colors.red),
+                      label: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red, fontSize: 16)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.red.withValues(alpha: 0.1),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LeaderboardScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.emoji_events_rounded, color: Colors.orange, size: 28),
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.surface,
-                      padding: const EdgeInsets.all(12),
-                    ),
-                  ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
-
-            // Stats Section
-            const Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'إحصائيات الجري',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ProfileStatTile(
-              label: 'إجمالي المسافة',
-              value: totalKm,
-              unit: 'كم',
-              icon: Icons.map_rounded,
-              color: Colors.blue,
-            ),
-            const SizedBox(height: 12),
-            ProfileStatTile(
-              label: 'معدل السرعة (Pace)',
-              value: pace,
-              icon: Icons.speed_rounded,
-              color: Colors.orange,
-            ),
-            const SizedBox(height: 12),
-            ProfileStatTile(
-              label: 'إجمالي الجولات',
-              value: runs,
-              unit: 'جولة',
-              icon: Icons.directions_run_rounded,
-              color: AppColors.primaryGreen,
-            ),
-            
-            const SizedBox(height: 32),
-
-            // Achievements Section
-            const Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'الإنجازات المكتسبة',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 120,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildAchievementBadge('البداية', Icons.directions_run_rounded, AppColors.primaryGreen, isAchieved: (profileAsync.value?.totalKm ?? 0) > 0),
-                  const SizedBox(width: 12),
-                  _buildAchievementBadge('بطل الـ 10كم', Icons.star_rounded, Colors.amber, isAchieved: (profileAsync.value?.totalKm ?? 0) >= 10),
-                  const SizedBox(width: 12),
-                  _buildAchievementBadge('وحش الـ 50كم', Icons.local_fire_department_rounded, Colors.orange, isAchieved: (profileAsync.value?.totalKm ?? 0) >= 50),
-                  const SizedBox(width: 12),
-                  _buildAchievementBadge('سندباد الزايد', Icons.map_rounded, Colors.blue, isAchieved: (profileAsync.value?.totalKm ?? 0) >= 100),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 40),
-            
-            // Logout
-            SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.logout_rounded, color: Colors.red),
-                label: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red, fontSize: 16)),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.red.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildAchievementBadge(String label, IconData icon, Color color, {bool isAchieved = true}) {
-    return Opacity(
-      opacity: isAchieved ? 1.0 : 0.3,
-      child: Container(
-        width: 100,
-        padding: const EdgeInsets.all(12),
+  Widget _buildActionItem(BuildContext context, String title, IconData icon, {required VoidCallback onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isAchieved ? color.withValues(alpha: 0.3) : Colors.white10),
+          color: AppColors.primaryGreen.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: isAchieved ? color : Colors.grey, size: 36),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: isAchieved ? AppColors.textPrimary : AppColors.textSecondary,
-              ),
-            ),
-          ],
+        child: Icon(icon, color: AppColors.primaryGreen),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isDark ? Colors.white : AppColors.textPrimary,
+          fontWeight: FontWeight.w500,
         ),
       ),
+      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+      onTap: onTap,
     );
   }
 }

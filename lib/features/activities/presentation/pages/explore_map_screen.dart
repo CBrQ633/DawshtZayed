@@ -18,7 +18,7 @@ class ExploreMapScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.explore_rounded, size: 80, color: AppColors.primaryGreen.withOpacity(0.5)),
+            Icon(Icons.explore_rounded, size: 80, color: AppColors.primaryGreen.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
             const Text(
               'استكشاف مسارات الجري والفعاليات \nسيتوفر هنا قريباً!',
